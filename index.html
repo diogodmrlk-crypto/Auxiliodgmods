@@ -10,7 +10,6 @@
     <meta name="apple-mobile-web-app-title" content="Mercado Pago">
     <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        /* (seu CSS mantido idêntico) */
         body {
             font-family: 'Quicksand', sans-serif;
             margin: 0;
@@ -95,7 +94,6 @@
         .error-message { color: #ff4444; font-size: 14px; margin-top: 10px; opacity: 0; transition: opacity 0.3s ease; }
         .error-message.show { opacity: 1; }
 
-        /* Main Menu Styles (hidden by default) */
         .main-container {
             display: none;
             width: 340px;
@@ -130,7 +128,6 @@
         .action-btn { flex: 1; padding: 8px 0; background: linear-gradient(90deg, #b30000 0%, #111 100%); color: #fff; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; transition: background 0.2s, box-shadow 0.2s, transform 0.12s; }
         .action-btn.selected { background: linear-gradient(90deg, #9c0000 0%, #b30000 100%); font-weight: bold; box-shadow: 0 0 0 6px rgba(255,56,56,0.18); animation: pulse 1.5s infinite; }
         .inject-btn { width: 100%; padding: 10px 0; background: linear-gradient(90deg, #b30000 0%, #111 100%); color: #fff; border: none; border-radius: 5px; font-size: 17px; font-weight: bold; margin-top: 10px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.18); transition: background 0.2s, box-shadow 0.2s, transform 0.12s; }
-        .command-prompt { margin-top: 18px; padding: 10px; display: none; border-radius: 4px; font-size: 14px; max-height: 100px; overflow-y: auto; color: #fff; }
         .toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 10px; max-width: 90%; width: auto; }
         .toast { background: linear-gradient(90deg, #a50000 0%, #111 100%); color: #fff; padding: 12px 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.18); font-size: 15px; opacity: 0.95; animation: fadeInOut 3s forwards; text-align: center; word-break: break-word; }
         @keyframes fadeInOut { 0% { opacity: 0; transform: translateY(20px); } 10% { opacity: 0.95; transform: translateY(0); } 90% { opacity: 0.95; transform: translateY(0); } }
@@ -138,7 +135,6 @@
     </style>
 </head>
 <body>
-    <!-- Login Screen -->
     <div class="login-container" id="loginContainer">
         <h1 class="login-title">DG MODS</h1>
         <form class="login-form" id="loginForm">
@@ -149,7 +145,6 @@
         </form>
     </div>
 
-    <!-- Main Menu (hidden by default) -->
     <div class="main-container" id="mainContainer">
         <h2>DG MODS</h2>
         <div class="top-btn-group">
@@ -212,26 +207,16 @@
             <label class="checkbox-label"><input type="checkbox" onchange="updatePrompt(this, 'Sensi Alta')"> Sensi Alta</label>
             <label class="checkbox-label"><input type="checkbox" onchange="updatePrompt(this, 'Sensi Media')"> Sensi Media</label>
             <label class="checkbox-label"><input type="checkbox" onchange="updatePrompt(this, 'Sensi Baixa')"> Sensi Baixa</label>
-            <label class="checkbox-label"><input type="checkbox" onchange="updatePrompt(this, 'Readtrick Pro')"> Readtrick Pro</label>
         </div>
-
-        <div class="toast-container" id="toastContainer"></div>
-        <div id="customAlert" style="display:none;"></div>
     </div>
 
-    <div id="fpsDisplay"></div>
+    <div class="toast-container" id="toastContainer"></div>
+    <div id="fpsDisplay">0 FPS</div>
 
     <script>
-        /*******************************
-         * CONFIG: coloque aqui a URL da sua MockAPI
-         * Ex: "https://68f27d4fb36f9750deecce00.mockapi.io/keys"
-         *******************************/
         const MOCKAPI_URL = "https://68f27d4fb36f9750deecce00.mockapi.io/keys1";
-
-        // estado atual (se precisar usar depois)
         let currentKeyEntry = null;
 
-        // Login (substitui senha estática)
         document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const key = document.getElementById('passwordInput').value.trim();
@@ -245,13 +230,6 @@
             }
 
             try {
-                // 1) Pegar IP público do cliente
-                const ipRes = await fetch("https://api.ipify.org?format=json");
-                if (!ipRes.ok) throw new Error("Falha ao obter IP");
-                const ipData = await ipRes.json();
-                const userIP = ipData.ip;
-
-                // 2) Buscar registro da key na MockAPI (query)
                 const q = encodeURIComponent(key);
                 const res = await fetch(`${MOCKAPI_URL}?key=${q}`);
                 if (!res.ok) throw new Error("Erro ao consultar MockAPI");
@@ -267,7 +245,6 @@
                 const keyEntry = data[0];
                 currentKeyEntry = keyEntry;
 
-                // 3) Verificar campo active (se existir)
                 if (keyEntry.active === false) {
                     errorMessage.innerText = "Esta key foi desativada.";
                     errorMessage.classList.add('show');
@@ -275,31 +252,8 @@
                     return;
                 }
 
-                // 4) Se ip vazio -> vincula este IP (PATCH)
-                if (!keyEntry.ip || keyEntry.ip === "" || keyEntry.ip === null) {
-                    // atualiza somente o campo ip
-                    const patchRes = await fetch(`${MOCKAPI_URL}/${keyEntry.id}`, {
-                        method: "PATCH",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ ip: userIP })
-                    });
+                liberarAcesso(key);
 
-                    if (!patchRes.ok) throw new Error("Erro ao salvar IP na MockAPI");
-
-                    // atualizar estado local
-                    currentKeyEntry = { ...keyEntry, ip: userIP };
-                    liberarAcesso(key);
-                    return;
-                }
-
-                // 5) Se ja tem ip salvo, compara
-                if (keyEntry.ip === userIP) {
-                    liberarAcesso(key);
-                } else {
-                    errorMessage.innerText = "Essa key já foi ativada por outro IP.";
-                    errorMessage.classList.add('show');
-                    setTimeout(() => errorMessage.classList.remove('show'), 4000);
-                }
             } catch (err) {
                 console.error(err);
                 errorMessage.innerText = "Erro ao validar a key. Tente novamente mais tarde.";
@@ -308,95 +262,29 @@
             }
         });
 
-        function cancelarMensagemErro() {
-            const errorMessage = document.getElementById('errorMessage');
-            errorMessage.classList.remove('show');
-        }
-
-        function cancelLogin() {
-            document.getElementById('passwordInput').value = '';
-            cancelarMensagemErro();
-        }
-
-        function liberarAcesso(key) {
-            document.getElementById('loginContainer').style.display = 'none';
-            const mainContainer = document.getElementById('mainContainer');
-            mainContainer.classList.add('show');
-            showToast('Login realizado com sucesso!');
-        }
-
-        // funções do painel (mantive as suas)
+        function cancelarMensagemErro() { document.getElementById('errorMessage').classList.remove('show'); }
+        function cancelLogin() { document.getElementById('passwordInput').value = ''; cancelarMensagemErro(); }
+        function liberarAcesso(key) { document.getElementById('loginContainer').style.display = 'none'; document.getElementById('mainContainer').classList.add('show'); showToast('Login realizado com sucesso!'); }
         function showSection(sectionId, clickedButton) {
-            const sections = document.querySelectorAll('.option-block');
-            sections.forEach(section => section.classList.remove('open'));
+            document.querySelectorAll('.option-block').forEach(s => s.classList.remove('open'));
             document.getElementById(sectionId).classList.add('open');
-
-            const topButtons = document.querySelectorAll('.top-btn');
-            topButtons.forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.top-btn').forEach(b => b.classList.remove('active'));
             clickedButton.classList.add('active');
         }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            showSection('aimbotOptions', document.querySelector('.top-btn'));
-        });
-
-        function updatePrompt(checkbox, modName) {
-            let message = modName + (checkbox.checked ? " Ativado" : " Desativado");
-            showToast(message);
-        }
-
-        function updateSliderValue(slider) {
-            document.getElementById('aimSliderValue').innerText = slider.value;
-            showToast('Fov Valor: ' + slider.value);
-        }
-
-        function updatePromptSelect(select, label) {
-            let selectedText = select.options[select.selectedIndex].text;
-            showToast(label + ': ' + selectedText);
-        }
-
-        function toggleButton(btn, label) {
-            btn.classList.toggle('selected');
-            let state = btn.classList.contains('selected') ? 'Selecionado' : 'Desmarcado';
-            showToast(label + ': ' + state);
-        }
-
-        function injectFiles() {
-            showToast('Ação executada!');
-        }
-
-        // Slider initial update
-        const aimSlider = document.getElementById('aimSlider');
-        if (aimSlider) {
-            aimSlider.style.setProperty('--webkitProgressPercent', ((aimSlider.value - aimSlider.min) / (aimSlider.max - aimSlider.min)) * 100 + '%');
-            aimSlider.addEventListener('input', function() {
-                this.style.setProperty('--webkitProgressPercent', ((this.value - this.min) / (this.max - this.min)) * 100 + '%');
-            });
-        }
-
-        // Toast notification
+        function updatePrompt(checkbox, modName) { showToast(modName + (checkbox.checked ? " Ativado" : " Desativado")); }
+        function updateSliderValue(slider) { document.getElementById('aimSliderValue').innerText = slider.value; showToast('Fov Valor: ' + slider.value); }
+        function updatePromptSelect(select, label) { showToast(label + ': ' + select.options[select.selectedIndex].text); }
+        function toggleButton(btn, label) { btn.classList.toggle('selected'); showToast(label + ': ' + (btn.classList.contains('selected') ? 'Selecionado' : 'Desmarcado')); }
+        function injectFiles() { showToast('Ação executada!'); }
         function showToast(message) {
             const toastContainer = document.getElementById('toastContainer');
             const toast = document.createElement('div');
-            toast.classList.add('toast');
-            toast.innerText = message;
-            toastContainer.appendChild(toast);
-
-            toast.addEventListener('animationend', () => {
-                if (toastContainer.contains(toast)) {
-                    toastContainer.removeChild(toast);
-                }
-            });
+            toast.classList.add('toast'); toast.innerText = message; toastContainer.appendChild(toast);
+            toast.addEventListener('animationend', () => { if(toastContainer.contains(toast)) toastContainer.removeChild(toast); });
         }
-
-        // FPS Display (mantive)
         const fpsElement = document.getElementById('fpsDisplay');
-        if (fpsElement) {
-            setInterval(() => {
-                const randomFps = Math.floor(Math.random() * (60 - 50 + 1)) + 50;
-                fpsElement.innerText = randomFps + ' FPS';
-            }, 200);
-        }
+        if(fpsElement){ setInterval(()=>{ fpsElement.innerText = Math.floor(Math.random()*(60-50+1)+50)+' FPS'; }, 200); }
+        document.addEventListener('DOMContentLoaded',()=>{ showSection('aimbotOptions', document.querySelector('.top-btn')); });
     </script>
 </body>
 </html>
